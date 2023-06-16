@@ -5,23 +5,28 @@ using UnityEngine.Serialization;
 
 namespace Movement.Components
 {
-    [RequireComponent(typeof(Rigidbody2D)), 
+    [RequireComponent(typeof(Rigidbody2D)),
      RequireComponent(typeof(Animator)),
      RequireComponent(typeof(NetworkObject))]
     public sealed class FighterMovement : NetworkBehaviour, IMoveableReceiver, IJumperReceiver, IFighterReceiver
     {
         public float speed = 1.0f;
         public float jumpAmount = 1.0f;
+        
 
         private Rigidbody2D _rigidbody2D;
         private Animator _animator;
         private NetworkAnimator _networkAnimator;
         private Transform _feet;
         private LayerMask _floor;
-
         private Vector3 _direction = Vector3.zero;
+        NetworkVariable<Vector3> direccion = new();
         private bool _grounded = true;
-        
+        public Vida vida;
+        [SerializeField] public NetworkVariable<float> vidaActual = new NetworkVariable<float>();
+
+
+
         private static readonly int AnimatorSpeed = Animator.StringToHash("speed");
         private static readonly int AnimatorVSpeed = Animator.StringToHash("vspeed");
         private static readonly int AnimatorGrounded = Animator.StringToHash("grounded");
@@ -29,6 +34,11 @@ namespace Movement.Components
         private static readonly int AnimatorAttack2 = Animator.StringToHash("attack2");
         private static readonly int AnimatorHit = Animator.StringToHash("hit");
         private static readonly int AnimatorDie = Animator.StringToHash("die");
+
+        public void Awake()
+        {
+            direccion.OnValueChanged += direccionCambiada;
+        }
 
         void Start()
         {
@@ -38,25 +48,51 @@ namespace Movement.Components
 
             _feet = transform.Find("Feet");
             _floor = LayerMask.GetMask("Floor");
+
+            vida = GameObject.FindObjectOfType<Vida>();
+            inicializarPersonajeServerRpc();
+        }
+
+        [ServerRpc(RequireOwnership = false)]
+        public void inicializarPersonajeServerRpc()
+        {
+            vidaActual.Value = vida.getVidaMax();
         }
 
         void Update()
         {
             if (!IsOwner) return;
-            
+            AnimacionesServerRpc();
+        }
+
+        [ServerRpc]
+        void AnimacionesServerRpc()
+        {
             _grounded = Physics2D.OverlapCircle(_feet.position, 0.1f, _floor);
-            _animator.SetFloat(AnimatorSpeed, this._direction.magnitude);
+            _animator.SetFloat(AnimatorSpeed, this.direccion.Value.magnitude);
             _animator.SetFloat(AnimatorVSpeed, this._rigidbody2D.velocity.y);
             _animator.SetBool(AnimatorGrounded, this._grounded);
         }
 
         void FixedUpdate()
         {
-            _rigidbody2D.velocity = new Vector2(_direction.x, _rigidbody2D.velocity.y);
+            _rigidbody2D.velocity = new Vector2(direccion.Value.x, _rigidbody2D.velocity.y);
+        }
+
+        private void direccionCambiada(Vector3 direccionAnterior, Vector3 direccionNueva)
+        {
+            _direction = direccionNueva;
+        }
+
+        [ClientRpc]
+        public void actualizarDireccionClientRpc(bool lookingRight)
+        {
+            transform.localScale = new Vector3(lookingRight ? 1 : -1, 1, 1);
         }
 
         public void Move(IMoveableReceiver.Direction direction)
         {
+
             MoveServerRpc(direction);
         }
 
@@ -75,9 +111,9 @@ namespace Movement.Components
             Attack2ServerRpc();
         }
 
-        public void TakeHit()
+        public void TakeHit(float damage)
         {
-            TakeHitServerRpc();
+            TakeHitServerRpc(damage);
         }
 
         public void Die()
@@ -90,13 +126,13 @@ namespace Movement.Components
         {
             if (direction == IMoveableReceiver.Direction.None)
             {
-                this._direction = Vector3.zero;
+                this.direccion.Value = Vector3.zero;
                 return;
             }
 
             bool lookingRight = direction == IMoveableReceiver.Direction.Right;
-            _direction = (lookingRight ? 1f : -1f) * speed * Vector3.right;
-            transform.localScale = new Vector3(lookingRight ? 1 : -1, 1, 1);
+            direccion.Value = (lookingRight ? 1f : -1f) * speed * Vector3.right;
+            actualizarDireccionClientRpc(lookingRight);
         }
 
         [ServerRpc]
@@ -128,16 +164,38 @@ namespace Movement.Components
             _networkAnimator.SetTrigger(AnimatorAttack2);
         }
 
-        [ServerRpc]
-        public void TakeHitServerRpc()
+        [ServerRpc(RequireOwnership = false)]
+        public void TakeHitServerRpc(float damage)
         {
             _networkAnimator.SetTrigger(AnimatorHit);
+            TakeHitClientRpc(damage);
+        }
+        [ClientRpc]
+        public void TakeHitClientRpc(float damage)
+        {
+            float v = vida.getVidaNueva();
+            vida.setVidaNueva(v - damage);
         }
 
-        [ServerRpc]
+        [ServerRpc(RequireOwnership = false)]
         public void DieServerRpc()
         {
             _networkAnimator.SetTrigger(AnimatorDie);
+            Invoke("DieClientRpc", 0.85f);
+        }
+
+        [ClientRpc]
+        public void DieClientRpc()
+        {
+            foreach (Transform hijo in transform.parent)
+            {
+                Destroy(hijo.gameObject);
+            }
+        }
+
+        public float GetVida()
+        {
+            return vida.getVidaNueva(); ;
         }
     }
 }
