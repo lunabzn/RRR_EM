@@ -23,7 +23,9 @@ namespace Movement.Components
         NetworkVariable<Vector3> direccion = new();
         private bool _grounded = true;
         public Vida vida;
+        public string nombre;
         [SerializeField] public NetworkVariable<float> vidaActual = new NetworkVariable<float>();
+        //[SerializeField] public NetworkVariable<string> nombreActual = new NetworkVariable<string>();
 
 
 
@@ -50,6 +52,7 @@ namespace Movement.Components
             _floor = LayerMask.GetMask("Floor");
 
             vida = GameObject.FindObjectOfType<Vida>();
+            //nombre = GameObject.Find("UI").GetComponent<UIManager>().playerName;
             inicializarPersonajeServerRpc();
         }
 
@@ -57,6 +60,7 @@ namespace Movement.Components
         public void inicializarPersonajeServerRpc()
         {
             vidaActual.Value = vida.getVidaMax();
+            //nombreActual.Value = "POAPA";
         }
 
         void Update()

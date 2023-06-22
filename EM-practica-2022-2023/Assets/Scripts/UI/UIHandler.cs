@@ -9,23 +9,40 @@ namespace UI
         public GameObject debugPanel;
         public Button hostButton;
         public Button clientButton;
+        public Jugadores jugadores;
+        [SerializeField] public NetworkVariable<int> numJugadores = new NetworkVariable<int>();
 
-        private void Start()
+
+        void Start()
         {
-            hostButton.onClick.AddListener(OnHostButtonClicked);
-            clientButton.onClick.AddListener(OnClientButtonClicked);
+            jugadores = GameObject.FindObjectOfType<Jugadores>();
+            inicializarJugadoresServerRpc();
         }
 
-        private void OnHostButtonClicked()
+        [ServerRpc(RequireOwnership = false)]
+        public void inicializarJugadoresServerRpc()
         {
+            numJugadores.Value = jugadores.getJugadores();
+        }
+
+
+        public void OnHostButtonClicked()
+        {
+            int j = jugadores.getActualJugadores();
+            jugadores.setActualJugadores(j +1);
             NetworkManager.Singleton.StartHost();
-            debugPanel.SetActive(false);
         }
 
-        private void OnClientButtonClicked()
+
+        public void OnClientButtonClicked()
         {
-            NetworkManager.Singleton.StartClient();
-            debugPanel.SetActive(false);
+            if(jugadores.getActualJugadores()<=2)
+            {
+                int j = jugadores.getActualJugadores();
+                jugadores.setActualJugadores(j + 1);
+                NetworkManager.Singleton.StartClient();
+               
+            }     
         }
     }
 }
