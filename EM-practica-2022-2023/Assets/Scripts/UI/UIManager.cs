@@ -13,6 +13,7 @@ namespace UI
     public class UIManager : MonoBehaviour
     {
         [SerializeField] private TMP_InputField playerNameInput;
+        //[SerializeField] public NetworkVariable<string> playerName = new NetworkVariable<string>();
         public string playerName = "";
 
         public static UIManager Instance { get; private set; }
@@ -28,7 +29,6 @@ namespace UI
         public void SetName(string c)
         {
             playerName = c;
-
         }
 
     }

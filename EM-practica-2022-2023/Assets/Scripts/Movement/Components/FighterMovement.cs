@@ -21,12 +21,15 @@ namespace Movement.Components
         private LayerMask _floor;
         private Vector3 _direction = Vector3.zero;
         NetworkVariable<Vector3> direccion = new();
+        NetworkVariable<Victoria> victoryCondition = new();
         private bool _grounded = true;
         public Vida vida;
         public string nombre;
         [SerializeField] public NetworkVariable<float> vidaActual = new NetworkVariable<float>();
         //[SerializeField] public NetworkVariable<string> nombreActual = new NetworkVariable<string>();
 
+        
+        public bool isAlive = true;
 
 
         private static readonly int AnimatorSpeed = Animator.StringToHash("speed");
@@ -40,6 +43,8 @@ namespace Movement.Components
         public void Awake()
         {
             direccion.OnValueChanged += direccionCambiada;
+            //victoryCondition = FindObjectOfType<Victoria>();
+            vidaActual.OnValueChanged += updateHealth;
         }
 
         void Start()
@@ -52,8 +57,63 @@ namespace Movement.Components
             _floor = LayerMask.GetMask("Floor");
 
             vida = GameObject.FindObjectOfType<Vida>();
+            
             //nombre = GameObject.Find("UI").GetComponent<UIManager>().playerName;
             inicializarPersonajeServerRpc();
+        }
+
+        public override void OnNetworkSpawn()
+        {
+            vidaActual.OnValueChanged += updateHealth; //Delegado que está comrpobando desde que spawnean los jugadores (vida de estos) su valor vida y lo actualiza para la barra
+        }
+
+        public override void OnNetworkDespawn()
+        {
+            isAlive = false;
+            if (IsOwner)
+            {
+                // Si es owner, llamo al objeto de tipo victoryCondition para usar el método playerDisconnectedServerRpc y poder actualizar el número de jugdores vivos que quedan
+                //victoryCondition.playerDisconnectedServerRpc();
+                //disconnectionServerRpc();
+
+            }
+
+            /*if (healthBar != null) //Si la barra de vida está asignada HUDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD
+            {
+                healthBar.GetComponent<BarraDeVida>()?.CambiarBarra(0); //Ponemos la barra de vida a 0 en caso de desconexión
+            }*/
+            //vidaActual.OnValueChanged -= updateHealth;
+            Destroy(this);
+        }
+
+        [ServerRpc]
+        void disconnectionServerRpc()
+        {
+            vidaActual.Value = 0;
+        }
+
+
+        //Método para cuando recibe algun golpe
+        void updateHealth(float previous, float current)
+        {
+            /*if (healthBar != null)  //Si está asignada
+            {
+                healthBar?.GetComponent<BarraDeVida>().CambiarBarra(vidaActual.Value); //Actualizamos el valor de la barra de vida 
+            }*/
+
+            if (vidaActual.Value <= 0 && (IsServer) && isAlive) //a continuacion comprobamos si esta muerto (su vida ha llegado a 0)
+            {
+                //En caso de estarlo, eliminamos todo control sobre el personaje y destruimos su sprite ejecutando antes la animación de morir.
+                isAlive = false;
+                /*FighterMovement movement = GetComponent<FighterMovement>();
+                movement.speed = 0;
+                movement.jumpAmount = 0;
+                movement.Die();*/
+
+                //victoryCondition.alivePlayersRemaining.Value -= 1;
+
+            }
+
         }
 
         [ServerRpc(RequireOwnership = false)]
@@ -177,6 +237,7 @@ namespace Movement.Components
         [ClientRpc]
         public void TakeHitClientRpc(float damage)
         {
+            
             float v = vida.getVidaNueva();
             vida.setVidaNueva(v - damage);
         }
@@ -199,7 +260,7 @@ namespace Movement.Components
 
         public float GetVida()
         {
-            return vida.getVidaNueva(); ;
+            return vida.getVidaNueva();
         }
     }
 }

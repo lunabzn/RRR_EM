@@ -11,18 +11,24 @@ namespace UI
 {
     public class JugadorHUD : NetworkBehaviour
     {
-        public string nombreJugador;
+        public string nombreJugador="";
         public string personaje;
+        public string nameInInputText;
+        public GameObject nombreJUG;
         // Start is called before the first frame update
+        
         void Start()
         {
-            if (!IsOwner) return;
-            
-            string nameInInputText = GameObject.Find("UI").GetComponent<UIManager>().playerName;
-            SetPlayerTagServerRpc(nameInInputText);
-            GetSettingsFromPreviousPlayerServerRpc();
-            Debug.Log("aaaaaaaaaaaaaaaaaaaaaa");
+            nameInInputText = GameObject.Find("UI").GetComponent<UIManager>().playerName;
+            if (IsOwner)
+            {
+                 
+
+                SetPlayerTagServerRpc(nameInInputText);
+                GetSettingsFromPreviousPlayerServerRpc();
+            }
         }
+
 
         [ServerRpc]
         public void SetPlayerTagServerRpc(string nameInInputText)
