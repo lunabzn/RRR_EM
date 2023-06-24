@@ -1,48 +1,59 @@
-using Unity.Netcode;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
+using Unity.Netcode;
+using Unity.Netcode.Components;
+using UnityEngine.Serialization;
+using TMPro;
 using UnityEngine.UI;
-
 namespace UI
 {
     public class UIHandler : MonoBehaviour
     {
-        public GameObject debugPanel;
-        public Button hostButton;
-        public Button clientButton;
-        public Jugadores jugadores;
-        [SerializeField] public NetworkVariable<int> numJugadores = new NetworkVariable<int>();
+        //Coger nombre del input
+        [SerializeField] private TMP_InputField playerNameInput;
+        public string playerName = "";
 
+        //elegir personaje
+        [SerializeField] public GameObject characterSelectionPanel;
+        [SerializeField] public Button initiatonButton;
+        [SerializeField] private Button akaiKazeButton;
+        [SerializeField] private Button oniButton;
+        [SerializeField] private Button huntressButton;
+        public string playerSkin;
+
+        public static UIHandler Instance { get; private set; }
 
         void Start()
         {
-            jugadores = GameObject.FindObjectOfType<Jugadores>();
-            inicializarJugadoresServerRpc();
+            Instance = this;
+            playerNameInput.onValueChanged.AddListener(seleccionarNombre);
+
+            akaiKazeButton.onClick.AddListener(() => seleccionarPersonaje("Akai Kaze"));
+            oniButton.onClick.AddListener(() => seleccionarPersonaje("Oni"));
+            huntressButton.onClick.AddListener(() => seleccionarPersonaje("Huntress"));
+
+            initiatonButton.onClick.AddListener(PlayerInitiation);
         }
 
-        [ServerRpc(RequireOwnership = false)]
-        public void inicializarJugadoresServerRpc()
+        private void seleccionarNombre(string nombre)
         {
-            numJugadores.Value = jugadores.getJugadores();
+            playerName = nombre;
+            //si tenemos nombre y sprite seleccionado visibilizamos boto inicio
+            if (playerName != "" && playerSkin != "") { initiatonButton.gameObject.SetActive(true); }
         }
 
-
-        public void OnHostButtonClicked()
+        private void seleccionarPersonaje(string personaje)
         {
-            int j = jugadores.getActualJugadores();
-            jugadores.setActualJugadores(j +1);
-            NetworkManager.Singleton.StartHost();
+            playerSkin = personaje;
+            if (playerName != "" && playerSkin != "") { initiatonButton.gameObject.SetActive(true); }
         }
 
-
-        public void OnClientButtonClicked()
+        private void PlayerInitiation()
         {
-            if(jugadores.getActualJugadores()<=2)
-            {
-                int j = jugadores.getActualJugadores();
-                jugadores.setActualJugadores(j + 1);
-                NetworkManager.Singleton.StartClient();
-               
-            }     
+            characterSelectionPanel.SetActive(false);
+
         }
+
     }
 }

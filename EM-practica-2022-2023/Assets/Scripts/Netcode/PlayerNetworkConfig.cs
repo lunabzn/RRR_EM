@@ -9,6 +9,7 @@ namespace Netcode
 {
     public class PlayerNetworkConfig : NetworkBehaviour
     {
+        public NetworkVariable<int> maxPlayers = new NetworkVariable<int>();
         public GameObject characterPrefab;
         //public string nombre;
         public NetworkVariable<int> alivePlayersRemaining = new NetworkVariable<int>(); //Jugadores que quedan vivos (Protegida)
@@ -25,6 +26,11 @@ namespace Netcode
 
         bool once = true;
         bool doOnce = true;
+
+        public void Start()
+        {
+            maxPlayers.Value = GameObject.Find("Match").GetComponent<Match>().maxPlayers;
+        }
 
         public override void OnNetworkSpawn()
         {
